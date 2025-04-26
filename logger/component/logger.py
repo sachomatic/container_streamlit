@@ -1,9 +1,10 @@
 import websockets
 import socket
-import threading,multiprocessing
+import threading
 import asyncio
 import datetime
 import random
+import traceback
 
 def clean_ansi(log):
     import re
@@ -17,11 +18,10 @@ def get_local_ip():
         try:
             # Connect to an external IP (Google's public DNS server)
             s.connect(("8.8.8.8", 80))
-            ip_address = s.getsockname()[0]
+            return s.getsockname()[0]
         except Exception as e:
-            print(f"Error retrieving local IP: {e}")
-            ip_address = None
-    return ip_address
+            print("Error retrieving local IP:")
+            traceback.print_exception(e)
 
 class ViteServer:
     def __init__(self, port=3001):
@@ -86,9 +86,9 @@ class Logger(threading.Thread):
         self.join()
 
 class Server(threading.Thread):
-    def __init__(self,container):
+    def __init__(self, container):
         super().__init__()
-        self.name = random.randint(0,1000)
+        self.name = f"Server thread {random.randint(0, 1000)}"
         self.Logger = Logger(container)
         self.Logger.start()
 
