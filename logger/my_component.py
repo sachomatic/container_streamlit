@@ -1,9 +1,9 @@
 import streamlit.components.v1 as components
-import streamlit as st
 
 from logger.component.logger import Server
 from logger.component.logger import ViteServer
 import threading
+
 
 # Fonction Python pour appeler le composant
 def log_viewer(ctn):
