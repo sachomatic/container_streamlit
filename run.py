@@ -24,7 +24,7 @@ def handle_client():
         ["streamlit","run",run_path, "--server.port",str(8501+instance_number),"--server.headless","true","--",str(instance_number)],
         shell=True
     )
-    INSTANCES.append(str(instance_number))
+    INSTANCES.append(process)
 
 class HTTPRequestHandler(SimpleHTTPRequestHandler):
     """HTTP request handler with additional properties and functions"""
@@ -51,7 +51,7 @@ class HTTPRequestHandler(SimpleHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-type','int')
             self.end_headers()
-            self.wfile.write(str(INSTANCES).encode())
+            self.wfile.write(str(len(INSTANCES)).encode())
             return
         else:
             return super().do_GET()  # Then use normal behavior

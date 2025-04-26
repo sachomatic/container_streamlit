@@ -12,9 +12,11 @@ from scripts.cookies import Cookies
 
 # Gestion des cookies
 conn = Cookies()
-rd = conn.read_cookies() # Lecture des cookies
+rd = Cookies().read_cookies() # Lecture des cookies
 if rd != None: # Si la recherche n'est pas vide
-    search = find_user(rd.name,rd.password) # On essaie de se connecter avec le mot de passe
+    search = find_user(
+        rd.name,rd.password # On essaie de se connecter avec le mot de passe
+        )
     if search[0] != False: # Si le statut de la recherche est True
         st.session_state["user"] = User(search[1][0],search[1][1],deserialize_perms(search[1][2])) # On crée l'utilisateur et on l'enregistre
     else: # Si la connexion a échouée, on affiche un dialogue. Normalement cela n'arrive jamais, sauf si la base de données est corrompue ou a été supprimée
