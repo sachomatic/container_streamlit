@@ -1,5 +1,6 @@
 import traceback
 import sqlite3
+from typing import Iterable
 
 
 class Interface:
@@ -44,7 +45,7 @@ class Interface:
 
         self.db.commit()
 
-    def update(self, markers: list, new_values: list):
+    def update(self, markers: Iterable, new_values: Iterable):
         """
         Markers are the differentiating values that allow to locate the row in the form : "column_name value"
         New values are a list of values to be set like so : "column_name value"

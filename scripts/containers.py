@@ -1,13 +1,14 @@
 import streamlit as st
 from scripts.login import BASE_USER
 import docker.errors as de
-import docker
+from docker.models.containers import Container
+from docker import DockerClient
 
 
 @st.dialog(title="Que se passe t-il?", width="large")
 def info():
     """
-    Un dialogue qui explique à l'utilisateur pourquoi la page ne se charge pas immédiatemment
+    Un dialogue qui explique à l'utilisateur pourquoi la page ne se charge pas immédiatement
     """
     st.info("Cette page lance docker au démarrage, cela peut prendre du temps. ")
     st.error(
@@ -18,7 +19,7 @@ def info():
 while True:
     # Attente du client docker
     try:
-        client = docker.DockerClient(base_url="npipe:////./pipe/docker_engine")
+        client = DockerClient(base_url="npipe:////./pipe/docker_engine")
         break
     except de.DockerException:
         # En attendant, on affiche un message d'explication
@@ -49,7 +50,8 @@ def ctn_page():
 
     st.title("Conteneurs")
     # Obtention d'une liste de conteneurs
-    containers = client.containers.list(all=True)
+    # * On force le type-checker à accepter que containers soit du type `list[Container]`
+    containers: list[Container] = list(client.containers.list(all=True))
     # Vérification des permissions de l'utilisateur
     if st.session_state["user"] is None:
         st.info("Vous n'êtes pas connecté, donc vous avez les permissions de base.")
@@ -66,7 +68,7 @@ def ctn_page():
         disabled=False if user.has_perm(1) and user.has_perm(2) else True,
     )
     help_col.info(
-        "Le docker-compose.yml lance (redémarre si les containers sont déjà lancés) tous les services nécessaires pour le serveur minecraft. C'est la méthode conventionelle.",
+        "Le docker-compose.yml lance (redémarre si les containers sont déjà lancés) tous les services nécessaires pour le serveur minecraft. C'est la méthode conventionnelle.",
     )
     st.divider()
 
@@ -83,7 +85,7 @@ def ctn_page():
                 True if not user.has_perm(2) or container.status != "running" else False
             )
             stop_help = (
-                "Le conteneur n'est pas en cours d'éxécution"
+                "Le conteneur n'est pas en cours d’exécution"
                 if container.status != "running"
                 else None
             )
@@ -101,11 +103,11 @@ def ctn_page():
             st.write("ID du conteneur : ", container.id)
             # Création des colonnes pour les logs, le démarrage et l'arrêt respectivement. On attribue à chacun une clé pour éviter les conflits
             b_col_1, b_col_2, b_col_3 = st.columns(3)
-            if b_col_1.button("Voir les logs", key="logs" + container.id):
+            if b_col_1.button("Voir les logs", key="logs" + container.id): # type: ignore # Le module ne définit pas les types
                 see_logs(container)
             if b_col_2.button(
                 "Lancer le conteneur",
-                key="start" + container.id,
+                key="start" + container.id, # type: ignore # Le module ne définit pas les types
                 disabled=start_disabled,
                 help=start_help,
             ):
@@ -113,7 +115,7 @@ def ctn_page():
                 st.rerun()
             if b_col_3.button(
                 "Arrêter le conteneur",
-                key="stop" + container.id,
+                key="stop" + container.id, # type: ignore # Le module ne définit pas les types
                 disabled=stop_disabled,
                 help=stop_help,
             ):
@@ -121,13 +123,13 @@ def ctn_page():
         st.divider()
 
 
-@st.dialog(title="Arreter le conteneur?")
+@st.dialog(title="Arrêter le conteneur?")
 def stop(container):
     """
     Dialogue demandant à l'utilisateur de confirmer l'arrêt
     """
     st.warning(
-        "Voulez-vous vraiment arreter le conteneur ? Assurez vous d'avoir sauvegardé les données du conteneur."
+        "Voulez-vous vraiment arrêter le conteneur ? Assurez vous d'avoir sauvegardé les données du conteneur."
     )
     if st.button(f"Arrêter {container.name}"):
         container.stop()

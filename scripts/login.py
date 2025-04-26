@@ -1,3 +1,4 @@
+from typing import Iterable, Literal
 import streamlit as st
 import time
 import json
@@ -5,44 +6,44 @@ from scripts.db_manager import Interface
 from threading import Lock
 
 
+class Permission[NT: str, VT: str | int | bool]:
+    """
+    Classe des permissions
+    """
+
+    def __init__(self, name: NT, value: VT):
+        self.name = name
+        self.value = value
+
 class User:
     """
     Classe utilisateur
     """
 
-    def __init__(self, name, password, perms: list):
-        self.name = name
-        self.password = password
-        self.permissions = perms
+    def __init__(self, name: str, password: str, perms: Iterable[Permission]):
+        self.name = str(name)
+        self.password = str(password)
+        self.perms = list(perms)
 
     def is_admin(self):
         """
         Retourne True si l'utilisateur est admin
         """
-        return self.permissions[-1].value
+        return self.perms[-1].value
 
-    def has_perm(self, perm: int):
+    def has_perm(self, index: int):
         """
         Retourne True si l'utilisateur a la permission ou si il est administrateur
         """
-        return self.permissions[perm].value is True or self.is_admin()
+        return self.perms[index].value is True or self.is_admin()
 
-
-class Permission:
-    """
-    Classe des permissions
-    """
-
-    def __init__(self, name, value):
-        self.name = name
-        self.value = value
 
 
 # Création d'une interface avec interface.db (j'aurais du changer le nom quand je le pouvais)
 db = Interface("users", ["name text", "password text", "permissions text"])
 # Les permissions de base
-BASE_PERMS = (
-    Permission("See logs", True),  # Elles sont par ordre de priorité
+BASE_PERMS = ( # Elles sont par ordre de priorité
+    Permission("See logs", True),
     Permission("Start containers", False),
     Permission("Stop containers", False),
     Permission("Admin panel", False),
@@ -116,12 +117,20 @@ with db.db:
                 users_with_admin.append(user)  # On ajoute l'utilisateur à la liste
         return users_with_admin
 
-    def find_user(name, password):
+    def find_user(
+        name: str, password: str
+    ) -> (
+        tuple[Literal[True], list]
+        | tuple[
+            Literal[False],
+            Literal["Nom d'utilisateur incorrect", "Mot de passe incorrect"],
+        ]
+    ):
         """
         Retourne le statut de la recherche et l'utilisateur si la recherche réussit
         """
         with lock:
-            users = db.read([["name", name]])  # Récupère l'utilisateur par son nom
+            users: list[list] = db.read([["name", name]])  # Récupère l'utilisateur par son nom
         if len(users) == 0:  # Si aucun utilisateur ne correspond, on retourne False
             return (False, "Nom d'utilisateur incorrect")
         for user in users:
@@ -131,10 +140,11 @@ with db.db:
                 return (True, user)
             else:  # Sinon, on retourne False et "Mot de passe incorrect"
                 return (False, "Mot de passe incorrect")
+        raise RuntimeError
 
     def pass_admin(user):
         """
-        Ecrit la permission admin sur l'utilisateur donné
+        Écrit la permission admin sur l'utilisateur donné
         """
         # Extraction des permissions
         perms = find_user(user.name, user.password)[1][2]
@@ -166,11 +176,11 @@ with db.db:
         perms_dict = [{"name": perm.name, "value": perm.value} for perm in perms]
         return json.dumps(perms_dict)
 
-    def deserialize_perms(perms: str):
+    def deserialize_perms(raw_perms: str):
         """
         Transforme les string de dictionnaire en objets Permission
         """
-        perms = json.loads(perms)
+        perms: Iterable[dict[str, str]] = json.loads(raw_perms)
         permissions_objs = [Permission(perm["name"], perm["value"]) for perm in perms]
         return permissions_objs
 
@@ -186,7 +196,7 @@ with db.db:
                 search = find_user(
                     name, password
                 )  # On vérifie que l'utilisateur existe
-                if search[0]:  # Si oui, alors c'est un succès
+                if search[0] is True:  # Si oui, alors c'est un succès
                     st.session_state["user"] = User(
                         search[1][0], search[1][1], deserialize_perms(search[1][2])
                     )
@@ -211,9 +221,9 @@ with db.db:
         Dialogue d'inscription
         """
 
-        def create_user(name, password, perms: list):
+        def create_user(name, password, perms: Iterable[Permission]):
             """
-            Ecriture du nouvel utilisateur
+            Écriture du nouvel utilisateur
             """
             # Si la raison de l'échec de find_user n'est pas nom d'utilisateur incorrect (soit mot de passe incorrect soit mot de passe bon), alors l'utilisateur existe. On affiche un toast
             if find_user(name, password)[1] != "Nom d'utilisateur incorrect":
@@ -251,10 +261,10 @@ def login_page():
             login()
         elif have_an_account == "Non":
             register()
-    else:  # Si l'utilisateur est connecté, on affiche son nom et on affiche les boutons de changement de mot de passe et de deconnexion
-        st.info(f"Vous etes connecté en tant que {st.session_state['user'].name}")
-        change_password, deconnect = st.columns(2)
+    else:  # Si l'utilisateur est connecté, on affiche son nom et on affiche les boutons de changement de mot de passe et de déconnexion
+        st.info(f"Vous êtes connecté en tant que {st.session_state['user'].name}")
+        change_password, disconnect = st.columns(2)
         change_password.button(
             "Changer le mot de passe", on_click=change_password_dialog
         )
-        deconnect.button("Déconnexion", on_click=logout_dialog)
+        disconnect.button("Déconnexion", on_click=logout_dialog)

@@ -24,5 +24,5 @@ def home():
         "Putain comment c'était un enfer ce site, vous imaginez même pas. D'abord, faut parler du fait que les 3/4 du temps où j'ai bossé, c'était sur les putain de logs, alors que personne va les utiliser!"
     )
     st.write(
-        "Ah et ces putains de cookies, ya jamais rien qui marche. Bref vous avez intêret à aimer ce site."
+        "Ah et ces putains de cookies, ya jamais rien qui marche. Bref vous avez intérêt à aimer ce site."
     )

@@ -1,13 +1,23 @@
+from json import JSONDecodeError
+from logging import getLogger
 import streamlit as st
 from streamlit_cookies_manager import EncryptedCookieManager
 import dotenv
 import os
 
-from scripts.login import User, serialize_perms, deserialize_perms
+from scripts.corruptiontracker import CorruptionTracker
+from scripts.login import BASE_PERMS, User, serialize_perms, deserialize_perms
+
+
+logger = getLogger(__name__)
 
 dotenv.load_dotenv()
 
-token = os.getenv("TOKEN")
+env_token = os.getenv("TOKEN")
+if env_token is None:
+    logger.fatal("TOKEN is not set in the environment variables or .env file.")
+    exit(1)
+token: str = env_token
 
 
 class Cookies:
@@ -19,26 +29,52 @@ class Cookies:
         )
 
         if not self.cookies.ready():
-            # On attend que le gestionnaire de cookies soit prêt (on arrête l'éxecution de la page en attendant)
+            # On attend que le gestionnaire de cookies soit prêt (on arrête l’exécution de la page en attendant)
             st.stop()
 
     def read_cookies(self):
+        global CorruptionTracker
         # Lecture du cookie user_id et password
         username = self.cookies.get("user_id")
+        if username is None:  # L'utilisateur n'est pas connecté
+            return
         password = self.cookies.get("password")
-        # Si un cookie est trouvé, on crée un User et on le retourne avec les permissions trouvées
-        if username not in (None, "none"):
-            permissions = self.cookies.get("permissions")
-            permissions = deserialize_perms(permissions)
-            return User(username, password, permissions)
-
-    # Sinon, None sera automatiquement retourné
+        if password is None:  # Le mot de passe est corrompu
+            logger.warning(
+                f"Utilisateur {username} n'a pas de mot de passe assigné dans ses cookies, ses cookies seront supprimés"
+            )
+            # On supprime les cookies
+            for key in ("user_id", "password", "permissions"):
+                try:
+                    del self.cookies[key]
+                except KeyError:  # Si le cookie n'existe pas, pas la peine d'insister
+                    logger.warning(f"Le cookie {key} n'existe pas")
+                    CorruptionTracker += 1
+            return
+        # Si les cookies sont trouvé, on crée un User et on le retourne avec les permissions trouvées
+        perms_cookie = self.cookies.get("permissions")
+        if perms_cookie is None:
+            logger.warning(
+                f"Utilisateur {username} n'a pas de permissions assignées dans ses cookies, ses permissions seront réinitialisées"
+            )
+            CorruptionTracker += 1
+            perms = BASE_PERMS
+        else:
+            try:
+                perms = deserialize_perms(perms_cookie)
+            except JSONDecodeError:
+                CorruptionTracker += 1
+                logger.error(
+                    f"Erreur de décodage des permissions pour l'utilisateur {username}, les permissions seront réinitialisées"
+                )
+                perms = BASE_PERMS
+        return User(username, password, perms)
 
     def write_cookies(self, user: User):
-        # On écrit le nom d'utilisateur, le mot de passe et les permissions (serialisées) dans les cookies
+        # On écrit le nom d'utilisateur, le mot de passe et les permissions (sérialisées) dans les cookies
         self.cookies["user_id"] = user.name
         self.cookies["password"] = user.password
-        self.cookies["permissions"] = serialize_perms(user.permissions)
+        self.cookies["permissions"] = serialize_perms(user.perms)
         self.cookies.save()
 
     def clear_cookies(self):

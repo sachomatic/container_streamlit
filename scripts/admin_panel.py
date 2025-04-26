@@ -1,3 +1,4 @@
+from typing import Iterable
 import streamlit as st
 from scripts.login import (
     User,
@@ -13,13 +14,13 @@ import json
 
 def save_perms(db: Interface, user: User, *perms):
     """
-    Ecriture des permissions données sous *perms
+    Écriture des permissions données sous *perms
     """
     # Si les permissions sont dans un set, l'extraire
     if len(perms) == 1:
         perms = perms[0]
-    # Ecriture des permissions avec une sérialisation des objets
-    db.update((f"name {user[0]}",), (f"permissions {json.dumps(perms)}",))
+    # Écriture des permissions avec une sérialisation des objets
+    db.update((f"name {user.perms[0]}",), (f"permissions {json.dumps(perms)}",))
 
 
 @st.dialog("Créer un utilisateur", width="large")
@@ -28,9 +29,9 @@ def create_user(db):
     Dialogue de création d'utilisateur
     """
 
-    def create_user(name, password, perms: list):
+    def create_user(name, password, perms: Iterable):
         """
-        Ecriture du nouvel utilisateur
+        Écriture du nouvel utilisateur
         """
         # Si la raison de l'échec de find_user n'est pas nom d'utilisateur incorrect (soit mot de passe incorrect soit mot de passe bon), alors l'utilisateur existe, la fonction retourne False
         if find_user(name, password)[1] != "Nom d'utilisateur incorrect":
