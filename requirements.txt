@@ -1,7 +1,6 @@
 docker
 dotenv
 sql
-docker
 streamlit
 streamlit_cookies_manager
 websockets
